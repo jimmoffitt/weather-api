@@ -163,35 +163,3 @@ SQL >
 
 
 
-
-NODE daily_rank_4
-SQL >
-
-    %
-
-    WITH
-    {{ String(sensor_type, 'temp', description="Type of weather data to return. Default is all types. Available types: 'temp', 'precip', 'wind', 'humidity', 'pressure', and 'clouds'. Wind returns both velocity and direction paramters. Units: temperature (F), precip (inches per hour), wind (mph and degrees) humidity (%), pressure (hPa), clouds (% coverage), ")}}
-
-    SELECT
-        formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') as date,
-        site_name as city,
-        {% if rank == 'max' %}
-          {% if defined(sensor_type) and sensor_type == 'temp' %} Max(temp_f) as temp_max
-          {% elif defined(sensor_type) and sensor_type == 'wind' %} Max(wind_speed) as wind_vel_max
-          {% elif defined(sensor_type) and sensor_type == 'pressure' %} Max(pressure) as pressure_max
-          {% elif defined(sensor_type) and sensor_type == 'humidity' %}  Max(humidity) as humidity_max
-          {% elif defined(sensor_type) and sensor_type == 'clouds' %} Max(clouds) as clouds_max
-          {% end %}
-        {% else %}
-          {% if defined(sensor_type) and sensor_type == 'temp' %} Min(temp_f) as temp_min
-          {% elif defined(sensor_type) and sensor_type == 'wind' %} Min(wind_speed) as wind_vel_min
-          {% elif defined(sensor_type) and sensor_type == 'pressure' %} Min(pressure) as pressure_min
-          {% elif defined(sensor_type) and sensor_type == 'humidity' %}  Min(humidity) as humidity_min
-          {% elif defined(sensor_type) and sensor_type == 'clouds' %} Min(clouds) as clouds_min
-          {% end %}
-        {% end %}  
-    FROM city_and_period_of_interest
-    GROUP BY date, city
-
-
-
