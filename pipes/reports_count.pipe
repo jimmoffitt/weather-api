@@ -1,0 +1,6 @@
+NODE weather_data_count
+SQL >
+
+    SELECT count() FROM incoming_weather_data
+
+

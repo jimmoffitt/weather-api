@@ -1,0 +1,93 @@
+DESCRIPTION >
+	Responds with hourly extremes for a sensor type.
+
+
+TOKEN "hourly_stats_read" READ
+
+NODE city_and_period_of_interest
+DESCRIPTION >
+    Apply any use of `city` and `start_time`/`end_time` query parameters.
+
+SQL >
+
+    %
+    SELECT *
+    FROM incoming_weather_data
+    WHERE
+        1=1
+         {% if defined(city) %}
+            AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+         {% end %}
+         {% if defined(start_time) and defined(end_time) %}
+             AND toDateTime(timestamp) BETWEEN {{ DateTime(start_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to 24 hours ago. Defines the start of the period of interest. ") }} AND {{ DateTime(end_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to time of request. Defines the end of the period of interest.") }}
+         {% end %}
+         {% if not defined(start_time) and not defined(end_time) %}
+            AND toDateTime(timestamp) BETWEEN addDays(now(),-30) AND now()
+         {% end %}
+         {% if defined(start_time) and not defined(end_time) %}
+             AND toDateTime(timestamp) BETWEEN {{ DateTime(start_time) }} AND now()
+         {% end %}
+         {% if not defined(start_time) and defined(end_time) %}
+             AND toDateTime(timestamp) BETWEEN addDays(toDateTime({{DateTime(end_time)}}),-30) AND {{ DateTime(end_time) }}
+         {% end %}
+    ORDER BY timestamp DESC
+     
+
+
+
+NODE select_sensor_type
+DESCRIPTION >
+    Apply any use of `sensor_type` query parameter.
+
+SQL >
+
+    %
+
+    WITH
+    {{ String(sensor_type, 'all', description="Type of weather data to return. Default is all types. Available types: 'temp', 'precip', 'wind', 'humidity', 'pressure', and 'clouds'. Wind returns both velocity and direction paramters. Units: temperature (F), precip (inches per hour), wind (mph and degrees) humidity (%), pressure (hPa), clouds (% coverage), ")}}
+
+    SELECT
+        formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') as date,
+        site_name as city,
+        {% if defined(sensor_type) and sensor_type == 'temp' %} Max(temp_f) as temp_max, Min(temp_f) as temp_min
+        {% elif defined(sensor_type) and sensor_type == 'wind' %} Max(wind_speed) as wind_vel_max
+        {% elif defined(sensor_type) and sensor_type == 'humidity' %}  Max(humidity) as humidity_max,Min(humidity) as humidity_min
+        {% elif defined(sensor_type) and sensor_type == 'clouds' %} Max(clouds) as clouds_max, Min(clouds) as clouds_min
+        {% else %}
+            Max(temp_f) as temp_max, 
+            Min(temp_f) as temp_min,
+            Max(wind_speed) as wind_vel_max,
+            Max(humidity) as humidity_max,
+            Min(humidity) as humidity_min,
+            Max(clouds) as clouds_max,
+            Min(clouds) as clouds_min
+        {% end %} 
+    FROM city_and_period_of_interest
+    GROUP BY date, city
+    ORDER BY date ASC
+
+
+
+NODE endpoint
+DESCRIPTION >
+    Apply any use of `max_results` and `order` query parameters.
+    By default a maximum of 1000 reports are returned.
+    By default data is returned in reverse-chronological order.
+
+SQL >
+
+    %
+    WITH
+    {{ String(order, 'desc', description="Temporal order. Options: 'desc' or 'asc'. Defaults to descending ('desc') order, most recent timestamp first. Ascending ('asc') order is needed for some charting tools.")}}
+
+    SELECT * 
+    FROM select_sensor_type
+    {% if order == 'desc' %}
+      ORDER BY date DESC
+    {% else %}
+      ORDER BY date ASC
+    {% end %}  
+    LIMIT {{ Int32(max_results, 1000, description="The maximum number of reports to return per response. Defaults to 1000.") }}
+
+
+

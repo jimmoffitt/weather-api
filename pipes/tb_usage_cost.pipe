@@ -1,0 +1,157 @@
+DESCRIPTION >
+	Creates an API Endpoint that provides information on usage and billing:
+    [https://api.tinybird.co/v0/pipes/tinybird_billing.json](https://api.tinybird.co/v0/pipes/tinybird_billing.json).
+    By default this Pipe/Endpoint will provide totals for the month-to-date, and `start_date` and `end_date` query parameters are available to select a different date range.
+    This Pipe is made of four Nodes: 1) `cost_variables`, 2) `processed_ingest`, 3) `processed_APIs`, 4) `storage`, and 5) `endpoint`. See below for descriptions of these Nodes.
+
+
+TOKEN "tb_usage_read" READ
+
+NODE cost_variables
+DESCRIPTION >
+    This Node sets two contants for the Tinybird prices for stored and processed data per gigabyte (GB). Details are available here: [tinybird.co/pricing](https://www.tinybird.co/pricing) and [tinybird.co/docs/billing/plans-and-pricing](https://www.tinybird.co/docs/billing/plans-and-pricing.html).
+
+SQL >
+
+    SELECT
+        0.07 AS price_per_processed_gb,
+        0.34 AS price_per_stored_gb
+
+
+
+NODE processed_ingest
+DESCRIPTION >
+    Retrieves from the ```tinybird.datasources_ops_log``` Service Data Source the amount of processed data associated with writing/ingesting data to Data Sources. This includes when you create, append, delete or replace data in a Data Source. This also includes the data written to Materialized Views *after*  they are created. 
+
+    By default this Node provides totals for the month-to-date.
+
+SQL >
+
+    %
+                SELECT
+                    datasource_name AS resource,
+                    'datasource' AS resource_type,
+                    sum(read_bytes) / pow(10, 9) AS gb_read,
+                    sum(written_bytes) / pow(10, 9) AS gb_written
+                FROM tinybird.datasources_ops_log
+                WHERE
+                    event_type NOT IN ('populateview', 'populateview-queued')
+                    {% if defined(start_date) and defined(end_date) %}
+                        AND toDate(timestamp) BETWEEN {{Date(start_date, description="Start date in format YYYY-MM-DD. Defaults to the start of the month if not defined.")}}
+                        AND {{Date(end_date, description="End date in format YYYY-MM-DD. Defaults to today if not defined.")}}
+                    {% else %}
+                        AND toDate(timestamp) BETWEEN toStartOfMonth(today()) AND today()
+                    {% end %}
+                    {% if defined(resources) %}
+                        AND resource IN {{Array(resources, 'String', description="Comma-separated resources. Defaults to all if not defined.")}}
+                    {% end %}
+                GROUP BY resource, resource_type
+
+
+
+NODE processed_APIs
+DESCRIPTION >
+    Retrieves from tht ```tinybird.pipe_stats``` Service Data Source the daily amount of processed data associated with reading data from Data Sources. You read data when you run queries against your Data Sources to generate responses to API Endpoint requests. You also read data when you make requests to the Query API.
+
+    By default this Node provides totals for the month-to-date.
+
+SQL >
+
+    %
+        SELECT
+                    pipe_name AS resource,
+                    if(resource == 'query_api', 'query_api', 'pipe') AS resource_type,
+                    sum(read_bytes_sum) / pow(10, 9) AS gb_read
+                FROM tinybird.pipe_stats
+                WHERE
+                    1 = 1
+                    {% if defined(start_date) and defined(end_date) %}
+                        AND date BETWEEN {{ Date(start_date) }} AND {{ Date(end_date) }}
+                    {% else %} 
+                        AND date BETWEEN toStartOfMonth(today()) AND today()
+                    {% end %}
+                    {% if defined(resources) %}
+                        AND resource IN {{ Array(resources, "String") }}
+                    {% end %}
+                GROUP BY resource, resource_type
+
+
+
+NODE storage
+DESCRIPTION >
+    Retrieves from the ``` tinybird.datasources_storage``` Service Data Source the maximum amount of storage from the previos day. 
+    For billing, a measurement of this storage is made at the end of every month. This Node queries for the maximum amount of stored data over the previous day by default. The maximum storage over a different period can be queried using the `start_date` and `end_date` parameters.
+
+SQL >
+
+    %
+            SELECT
+                toStartOfMonth(day) AS month,
+                resource,
+                resource_type,
+                argMax(gb_stored, day) AS gb_stored
+            FROM
+                (
+                    SELECT
+                        toDate(timestamp) AS day,
+                        datasource_name AS resource,
+                        'datasource' AS resource_type,
+                        (max(bytes) + max(bytes_quarantine)) / pow(10, 9) AS gb_stored
+                    FROM tinybird.datasources_storage
+                    WHERE
+                        1 = 1
+                        {% if defined(start_date) and defined(end_date) %}
+                            AND toDate(timestamp) BETWEEN {{ Date(start_date) }}
+                            AND {{ Date(end_date) }}
+                        {% else %}
+                            AND toDate(timestamp) BETWEEN addDays(today(), -1) AND today()
+                        {% end %}
+                        {% if defined(resources) %}
+                            AND resource IN {{ Array(resources, "String") }}
+                        {% end %}
+                    GROUP BY day, resource, resource_type
+                )
+            GROUP BY month, resource, resource_type
+            ORDER BY resource, month desc
+
+
+
+NODE endpoint
+DESCRIPTION >
+    This Node compiles results from the previous Nodes and calculates the estimated stored and processed data costs for each Data Sources, Materialize Views, and Pipes, as well as any Query API usages.
+
+SQL >
+
+    WITH
+        (SELECT price_per_processed_gb FROM cost_variables) AS price_per_processed_gb,
+        (SELECT price_per_stored_gb FROM cost_variables) AS price_per_stored_gb
+    SELECT
+        resource,
+        resource_type,
+        round((gb_read + gb_written) * price_per_processed_gb, 4) AS resource_processed_cost,
+        round(gb_stored * price_per_stored_gb, 4) AS resource_stored_cost,
+        round(resource_processed_cost + resource_stored_cost, 4) AS resource_total_cost,
+        sum(gb_read) AS gb_read,
+        sum(gb_written) AS gb_written,
+        sum(gb_stored) AS gb_stored
+    FROM
+        (
+            SELECT resource, resource_type, gb_read, gb_written, 0 AS gb_stored
+            FROM processed_ingest
+            UNION ALL
+            SELECT resource, resource_type, gb_read, 0 AS gb_written, 0 AS gb_stored
+            FROM processed_APIs
+            UNION ALL
+            SELECT
+                resource,
+                resource_type,
+                0 AS gb_read,
+                0 AS gb_written,
+                sum(gb_stored) AS gb_stored
+            FROM storage
+            GROUP BY resource, resource_type
+        )
+    GROUP BY resource, resource_type
+    ORDER BY resource_total_cost desc
+
+

@@ -1,0 +1,15 @@
+DESCRIPTION >
+    TODO: when making copy, add timestamp to schema?
+
+SCHEMA >
+    `resource` String,
+    `resource_type` String,
+    `resource_processed_cost` Nullable(Float64),
+    `resource_stored_cost` Nullable(Float64),
+    `resource_total_cost` Nullable(Float64),
+    `gb_read` Float64,
+    `gb_written` Float64,
+    `gb_stored` Float64
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "resource, resource_type"

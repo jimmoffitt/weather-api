@@ -1,0 +1,12 @@
+# Data Source created from Pipe 't_4f22706a0b04463fb15ad60e47fcdaba'
+DESCRIPTION >
+    Mockingbird data. First iteration of building a site table. In this case, these site metadata would be parsed out of a real-time stream. A MV view based on incoming weather data stream with each report contains a site object. Most real-time feeds with have the minimum site metadata, and typically consists of one a single site ID. 
+TODO: have mock data of x sensors, with sites having many reports.
+
+SCHEMA >
+    `site_name` String,
+    `latitude` Float32,
+    `longitude` Float32
+
+ENGINE "AggregatingMergeTree"
+ENGINE_SORTING_KEY "site_name, latitude, longitude"

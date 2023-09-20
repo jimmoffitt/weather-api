@@ -1,0 +1,19 @@
+TOKEN "api_cities_endpoint_read_1399" READ
+
+NODE get_city_name
+SQL >
+
+    SELECT DISTINCT site_name FROM reports
+    ORDER BY site_name ASC
+
+
+
+NODE including_all
+SQL >
+
+    SELECT DISTINCT site_name FROM reports
+    ORDER BY site_name ASC
+    UNION ALL
+    SELECT 'all' as site_name
+
+

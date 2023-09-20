@@ -1,0 +1,15 @@
+NODE rain_data_only
+SQL >
+
+    SELECT timestamp, 
+    site_name, 
+    precip 
+    FROM incoming_weather_data
+    WHERE precip > 0
+
+TYPE materialized
+DATASOURCE rain_data_only_mv_1
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"
+ENGINE_SORTING_KEY "timestamp, site_name"
+
