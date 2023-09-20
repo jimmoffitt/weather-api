@@ -1,3 +1,4 @@
 .tinyb
 .diff_tmp
 .DS_Store
+.tinyenv

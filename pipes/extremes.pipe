@@ -7,6 +7,8 @@ DESCRIPTION >
 This demo is driven by polling data from OpenWeatherMap and loading that into Tinybird with the Events API. All timestamps are in UTC. Data is ordered by timestamp in reverse-chronological order in most cases.
 
 
+TOKEN "extremes_endpoint_read_8514" READ
+
 NODE city_and_period_of_interest
 DESCRIPTION >
     Applying 'city', 'start_time', and 'end_time' query parameters. This is a case where we pull in every field (SELECT \*) and do not take this opportunity to drop fields. The fields arriving via the Event API have already been curated by a Python script. 
