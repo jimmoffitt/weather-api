@@ -1,0 +1,11 @@
+NODE untitled_pipe_5931_0
+SQL >
+
+    SELECT DATE(timestamp) AS date, 
+    site_name,
+    MAX(temp_f) as temp
+    FROM incoming_weather_data
+    GROUP BY DATE(timestamp), site_name
+    ORDER BY temp DESC
+
+
