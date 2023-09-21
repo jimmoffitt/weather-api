@@ -7,7 +7,7 @@ DESCRIPTION >
 This demo is driven by polling data from OpenWeatherMap and loading that into Tinybird with the Events API. All timestamps are in UTC. Data is ordered by timestamp in reverse-chronological order in most cases.
 
 
-TOKEN "extremes_endpoint_read_8514" READ
+TOKEN "extremes_endpoint_read_8216" READ
 
 NODE city_and_period_of_interest
 DESCRIPTION >
@@ -16,7 +16,7 @@ DESCRIPTION >
     Time parameters have this default behavior:
     * If none are used, data from the past 24 hours are available.
     * end_time defaults to the time of the request, i.e. now().
-    * start_time defaults to 24 hours before the end_time. 
+    * start_time defaults to 30 days before the end_time. 
 
 
     For testing: 
@@ -34,16 +34,16 @@ SQL >
             AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
          {% end %}
          {% if defined(start_time) and defined(end_time) %}
-             AND toDateTime(timestamp) BETWEEN {{ DateTime(start_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to 24 hours ago. Defines the start of the period of interest. ") }} AND {{ DateTime(end_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to time of request. Defines the end of the period of interest.") }}
+             AND toDateTime(timestamp) BETWEEN {{ DateTime(start_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to 30 days ago. Defines the start of the period of interest. ") }} AND {{ DateTime(end_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to time of request. Defines the end of the period of interest.") }}
          {% end %}
          {% if not defined(start_time) and not defined(end_time) %}
-            AND toDateTime(timestamp) BETWEEN addDays(now(),-1) AND now()
+            AND toDateTime(timestamp) BETWEEN addDays(now(),-30) AND now()
          {% end %}
          {% if defined(start_time) and not defined(end_time) %}
              AND toDateTime(timestamp) BETWEEN {{ DateTime(start_time) }} AND now()
          {% end %}
          {% if not defined(start_time) and defined(end_time) %}
-             AND toDateTime(timestamp) BETWEEN addDays(toDateTime({{DateTime(end_time)}}),-1) AND {{ DateTime(end_time) }}
+             AND toDateTime(timestamp) BETWEEN addDays(toDateTime({{DateTime(end_time)}}),-30) AND {{ DateTime(end_time) }}
          {% end %}
     ORDER BY timestamp DESC
      
@@ -79,6 +79,24 @@ SQL >
 
 
 
+NODE find_daily_extremes
+DESCRIPTION >
+    Here we need to aggregate the selected results into daily max or mins, aas specifed with the 'rank' query parameter.
+
+SQL >
+
+    %
+
+    SELECT
+      date(timestamp) AS date,
+      site_name,
+      MAX(temp_f) AS temp_max
+    FROM select_sensor_type
+    GROUP BY date, site_name
+    ORDER BY date
+
+
+
 NODE endpoint
 DESCRIPTION >
     Here we apply the 'max_results' parameter.
@@ -90,11 +108,11 @@ SQL >
     {{ String(order, 'desc', description="Temporal order. Options: 'desc' or 'asc'. Defaults to descending ('desc') order, most recent timestamp first. Ascending ('asc') order is needed for some charting tools.")}}
 
     SELECT * 
-    FROM select_sensor_type
+    FROM find_daily_extremes
     {% if order == 'desc' %}
-      ORDER BY timestamp DESC
+      ORDER BY date, temp_max DESC
     {% else %}
-      ORDER BY timestamp ASC
+      ORDER BY date ASC, temp_max DESC
     {% end %}  
     LIMIT {{ Int32(max_results, 1000, description="The maximum number of reports to return per response. Defaults to 1000.") }}
 
