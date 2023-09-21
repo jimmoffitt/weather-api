@@ -1,3 +1,5 @@
+TOKEN "reports_count_endpoint_read_8906" READ
+
 NODE weather_data_count
 SQL >
 
