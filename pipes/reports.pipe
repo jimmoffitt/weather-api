@@ -16,7 +16,7 @@ DESCRIPTION >
     Time parameters have this default behavior:
     * If none are used, data from the past 24 hours are available.
     * end_time defaults to the time of the request, i.e. now().
-    * start_time defaults to 24 hours before the end_time. 
+    * start_time defaults to 7 days before the end_time. 
 
 
     For testing: 
@@ -34,16 +34,16 @@ SQL >
             AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
          {% end %}
          {% if defined(start_time) and defined(end_time) %}
-             AND toDateTime(timestamp) BETWEEN parseDateTimeBestEffort({{ DateTime(start_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to 24 hours ago. Defines the start of the period of interest. ") }}) AND parseDateTimeBestEffort({{ DateTime(end_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to time of request. Defines the end of the period of interest.") }})
+             AND toDateTime(timestamp) BETWEEN parseDateTimeBestEffort({{ DateTime(start_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to 7 days ago. Defines the start of the period of interest. ") }}) AND parseDateTimeBestEffort({{ DateTime(end_time, description="'YYYY-MM-DD HH:mm:ss'. UTC. Optional and defaults to time of request. Defines the end of the period of interest.") }})
          {% end %}
          {% if not defined(start_time) and not defined(end_time) %}
-            AND toDateTime(timestamp) BETWEEN addDays(now(),-1) AND now()
+            AND toDateTime(timestamp) BETWEEN addDays(now(),-7) AND now()
          {% end %}
          {% if defined(start_time) and not defined(end_time) %}
              AND toDateTime(timestamp) BETWEEN parseDateTimeBestEffort({{ DateTime(start_time) }}) AND now()
          {% end %}
          {% if not defined(start_time) and defined(end_time) %}
-             AND toDateTime(timestamp) BETWEEN addDays(toDateTime(parseDateTimeBestEffort({{DateTime(end_time)}}),-1) AND parseDateTimeBestEffort({{ DateTime(end_time) }})
+             AND toDateTime(timestamp) BETWEEN addDays(toDateTime(parseDateTimeBestEffort({{DateTime(end_time)}}),-7) AND parseDateTimeBestEffort({{ DateTime(end_time) }})
          {% end %}
     ORDER BY timestamp DESC
      
@@ -96,7 +96,7 @@ SQL >
     {% else %}
       ORDER BY timestamp ASC
     {% end %}  
-    LIMIT {{ Int32(max_results, 1000, description="The maximum number of reports to return per response. Defaults to 1000.") }}
+    LIMIT {{ Int32(max_results, 10000, description="The maximum number of reports to return per response.") }}
 
 
 

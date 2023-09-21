@@ -1,10 +1,9 @@
 DESCRIPTION >
-	A Tinybird 'Pipe' that operates on the incoming_weather_data Data Source. Here we apply three Nodes:
+	A Tinybird 'Pipe' that operates on the incoming_weather_data Data Source. Here we apply these Nodes:
 1)  city_and_period_of_interest: 'city', 'start_time', and 'end_times' query parameters
 2) select_sensor_type: apply any 'sensor_type' query parameter
-3) endpoint: apply the 'max_results' query parameter. 
-
-This demo is driven by polling data from OpenWeatherMap and loading that into Tinybird with the Events API. All timestamps are in UTC. Data is ordered by timestamp in reverse-chronological order in most cases.
+3) find_daily_extremes: find the max across each day. 
+4) endpoint: apply the 'max_results' query parameter.
 
 
 TOKEN "extremes_endpoint_read_8216" READ
