@@ -1,0 +1,33 @@
+TOKEN "current_conditions_endpoint_read_3394" READ
+
+NODE most_current_reports
+DESCRIPTION >
+    {% set city = 'minneapolis' %}
+
+SQL >
+
+    %
+    SELECT *
+    FROM incoming_weather_data
+    WHERE timestamp = (
+      SELECT MAX(timestamp)
+      FROM incoming_weather_data
+      GROUP BY site_name
+      LIMIT 1
+    ) 
+    ORDER BY site_name
+
+
+
+
+NODE select_site_name
+SQL >
+
+    %
+    SELECT * FROM most_current_reports
+    WHERE 1=1
+    {% if defined(city) %}
+       AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+    {% end %}
+
+
