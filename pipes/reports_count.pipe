@@ -3,6 +3,7 @@ TOKEN "reports_count_endpoint_read_8906" READ
 NODE weather_data_count
 SQL >
 
-    SELECT count() FROM incoming_weather_data
+    SELECT count() AS num_reports
+    FROM incoming_weather_data
 
 
