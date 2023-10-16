@@ -4,12 +4,10 @@ SQL >
     SELECT timestamp, 
     site_name, 
     precip 
-    FROM incoming_weather_data
+    FROM weather_data
     WHERE precip > 0
 
 TYPE materialized
 DATASOURCE rain_data_only_mv
-ENGINE "MergeTree"
-ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"
-ENGINE_SORTING_KEY "timestamp, site_name"
+
 
