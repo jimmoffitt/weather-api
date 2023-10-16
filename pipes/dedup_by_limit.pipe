@@ -1,0 +1,20 @@
+NODE dedup_by_limit_0
+SQL >
+
+    SELECT * 
+    FROM incoming_weather_data
+    LIMIT 1 BY timestamp, site_name
+
+TYPE materialized
+DATASOURCE weather_data
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYear(timestamp)"
+ENGINE_SORTING_KEY "timestamp, site_name, temp_f, precip"
+
+
+NODE dedup_by_limit_1
+SQL >
+
+    SELECT * FROM dedup_by_limit_0
+
+

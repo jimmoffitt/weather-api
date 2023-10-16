@@ -1,0 +1,17 @@
+# Data Source created from Pipe 'dedup_by_limit'
+
+SCHEMA >
+    `clouds` Int16,
+    `description` String,
+    `humidity` Int16,
+    `precip` Float32,
+    `pressure` Int32,
+    `site_name` String,
+    `temp_f` Float32,
+    `timestamp` DateTime,
+    `wind_dir` Int16,
+    `wind_speed` Float32
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYear(timestamp)"
+ENGINE_SORTING_KEY "timestamp, site_name, temp_f, precip"
