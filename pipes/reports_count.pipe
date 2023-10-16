@@ -4,6 +4,6 @@ NODE weather_data_count
 SQL >
 
     SELECT count() AS num_reports
-    FROM incoming_weather_data
+    FROM weather_data
 
 
