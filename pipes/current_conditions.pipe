@@ -7,14 +7,13 @@ DESCRIPTION >
 SQL >
 
     %
-    SELECT *
-    FROM incoming_weather_data
-    WHERE 1=1
-     {% if defined(city) %}
-            AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
-         {% end %}
-    ORDER BY timestamp DESC
-    LIMIT 1
-
+        SELECT *
+        FROM weather_data
+        WHERE 1=1
+         {% if defined(city) %}
+                AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+             {% end %}
+        ORDER BY timestamp DESC
+        LIMIT 1
 
 
