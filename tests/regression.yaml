@@ -1,0 +1,13 @@
+- pipe: '.*'  # regular expression that selects all endpoints in the workspace
+  tests:  # list of tests to run for this pipe
+    - [coverage]:  # testing strategy to use (coverage, last, or manual)
+      config:  # configuration options for this strategy
+        assert_result: bool = False  # whether to perform an assertion on the results returned by the endpoint
+        assert_result_no_error: bool = True  # whether to verify that the endpoint does not return errors
+        assert_result_rows_count: bool = False  # whether to verify that the correct number of elements are returned in the results
+        assert_result_ignore_order: bool = False  # whether to ignore the order of the elements in the results
+        assert_time_increase_percentage: int = 25  # allowed percentage increase in endpoint response time. use -1 to disable assert
+        assert_bytes_read_increase_percentage: int = 25  # allowed percentage increase in the amount of bytes read by the endpoint. use -1 to disable assert
+        assert_max_time: float = 1  # Max time allowed for the endpoint response time. If the response time is lower than this value then the assert_time_increase_percentage is not taken into account. Default is 0.3
+        skip: bool = False  # whether the test should be skipped, use it to skip individual pipe tests
+        failfast: bool = False  # whether the test should stop at the first error encountered
