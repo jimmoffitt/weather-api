@@ -1,0 +1,62 @@
+TOKEN "iqr_endpoint_read_1136" READ
+
+NODE get_stats
+SQL >
+
+    %
+    {% set _time_window_minutes=10 %}
+
+    WITH stats AS (SELECT site_name,
+    quantileExact(0.25) (temp_f) AS lower_quartile,
+    quantileExact(0.5) (temp_f) AS mid_quartile,
+    quantileExact(0.75) (temp_f) AS upper_quartile,
+    (upper_quartile - lower_quartile) * 1.5 AS IQR
+    FROM weather_data
+    WHERE timestamp >= toDate(now()) - interval {{Int16(_time_window_minutes)}} minutes
+      {% if defined(city) %}
+       AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+    {% end %}
+    GROUP BY site_name
+    LIMIT 200
+    )
+     SELECT DISTINCT timestamp, 
+        site_name, 
+        temp_f, 
+        ROUND((stats.lower_quartile - stats.IQR),2) AS lower_bound, 
+        ROUND((stats.upper_quartile + stats.IQR),2) AS upper_bound 
+     FROM weather_data
+     JOIN stats ON weather_data.site_name = stats.site_name
+     WHERE timestamp >= toDate(NOW()) - INTERVAL {{Int16(_time_window_minutes)}} MINUTES
+     AND (temp_f > (stats.upper_quartile + stats.IQR)
+     OR temp_f < (stats.lower_quartile - stats.IQR))
+     ORDER BY timestamp DESC
+
+
+
+NODE endpoint
+SQL >
+
+    WITH RankedData AS (
+        SELECT
+            site_name,
+            timestamp,
+            temp_f,
+            ROW_NUMBER() OVER (PARTITION BY site_name ORDER BY timestamp DESC) AS row_num,
+            lower_bound,
+            upper_bound
+        FROM
+            get_stats
+    )
+    SELECT
+        site_name,
+        timestamp,
+        temp_f,
+        lower_bound,
+        upper_bound
+    FROM
+        RankedData
+    WHERE
+        row_num = 1
+    ORDER BY timestamp DESC    
+
+
