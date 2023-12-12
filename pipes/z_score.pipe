@@ -1,0 +1,53 @@
+TOKEN "z_score_endpoint_read_5952" READ
+
+NODE calculate_z_score
+SQL >
+
+    %
+    {% set _stats_time_window_minutes=360 %}
+    {% set _anomaly_scan_time_window_minutes=180 %}
+    {% set _zscore_outlier_multiplier=2 %}
+
+    WITH stats AS (
+        SELECT site_name,
+            avg(temp_f) AS average,
+            stddevPop(temp_f) AS stddev
+        FROM weather_data
+        WHERE timestamp between NOW() - INTERVAL {{Int16(_stats_time_window_minutes)}} MINUTE AND NOW()
+           {% if defined(site_name) %}               
+              AND site_name = {{ Int32(site_name)}}
+           {% end %}  
+        GROUP BY site_name  
+    )
+    SELECT i.timestamp, 
+         i.site_name, 
+         i.temp_f, 
+         (i.temp_f - stats.average)/stats.stddev AS zscore,
+         stats.average,
+         stats.stddev,
+         {{Int16(_zscore_outlier_multiplier)}} AS zscore_multiplier
+    FROM weather_data i
+    JOIN stats s ON s.site_name = i.site_name
+    WHERE timestamp BETWEEN NOW() - INTERVAL {{Int16(_anomaly_scan_time_window_minutes)}} MINUTE AND NOW()
+    ORDER BY timestamp DESC
+
+
+
+NODE endpoint
+SQL >
+
+    %
+    SELECT timestamp,
+       site_name,
+       temp_f,
+       Round(zscore,2) AS zscore,
+       multiIf(zscore < (-1 * zscore_multiplier), 'low', zscore > zscore_multiplier, 'high','ok') AS test,
+       Round(average,2),
+       stddev,
+       zscore_multiplier
+    FROM calculate_z_score
+    WHERE test = 'low' OR test = 'high' 
+     AND zscore < -1 * zscore_multiplier OR zscore > zscore_multiplier 
+    ORDER by abs(zscore) DESC
+
+

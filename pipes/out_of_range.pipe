@@ -1,0 +1,48 @@
+TOKEN "out_of_range_endpoint_read_0346" READ
+
+NODE select_outliers
+SQL >
+
+    %
+    SELECT site_name, 
+        timestamp, 
+        temp_f, 
+        {{Int16(min_value, 32, description="Integer. Minimum threshold, will match readings less than this number.")}} as min_value, 
+        {{Int16(max_value, 100, description="Integer. Maximum threshold, will match readings greater than this number.")}} as max_value 
+    FROM weather_data
+    WHERE (temp_f < {{Int16(min_value)}} OR temp_f > {{Int16(max_value)}})
+    {% if defined(city) %}
+       AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+    {% end %}
+    AND timestamp > NOW() - INTERVAL {{Int16(time_window_minutes, 360, description="Search this many most recent minutes of the data history.")}} MINUTE
+
+
+
+
+NODE endpoint
+SQL >
+
+    WITH RankedData AS (
+        SELECT
+            site_name,
+            timestamp,
+            temp_f,
+            ROW_NUMBER() OVER (PARTITION BY site_name ORDER BY timestamp DESC) AS row_num,
+            min_value,
+            max_value
+        FROM
+            select_outliers
+    )
+    SELECT
+        site_name,
+        timestamp,
+        temp_f,
+        min_value,
+        max_value
+    FROM
+        RankedData
+    WHERE
+        row_num = 1
+    ORDER BY timestamp DESC    
+
+

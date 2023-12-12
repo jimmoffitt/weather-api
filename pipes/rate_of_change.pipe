@@ -1,0 +1,44 @@
+TOKEN "rate_of_change_endpoint_read_4278" READ
+
+NODE calculating_slope
+SQL >
+
+    %
+    SELECT site_name, 
+    timestamp, 
+    previous_timestamp,
+    (temp_f - previous_temp_f) / (timestamp - previous_timestamp) as slope,
+    temp_f, 
+    previous_temp_f,
+    (temp_f - previous_temp_f) as diff_temp_f,
+    (timestamp - previous_timestamp) as time_diff,
+    {{Int16(max_slope, 1, description="Integer. Maximum slope, any higher than this are returned.")}} as max_slope,
+    lagInFrame(timestamp, 1) OVER 
+    (PARTITION BY site_name ORDER BY timestamp ASC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) AS previous_timestamp, 
+    lagInFrame(temp_f, 1) 
+    OVER (PARTITION BY site_name ORDER BY timestamp ASC ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) AS previous_temp_f
+    FROM weather_data
+    WHERE timestamp > now() - interval {{Int8(time_window_minutes, 60, description="window")}} minute
+     {% if defined(city) %}
+       AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+    {% end %}
+    ORDER BY timestamp DESC
+
+
+
+NODE endpoint
+SQL >
+
+    SELECT site_name, 
+      timestamp, 
+      Round(slope,2) as slope, 
+      Round(diff_temp_f,2) as temp_diff, 
+      time_diff, 
+      previous_temp_f, 
+      temp_f, 
+      max_slope 
+    FROM calculating_slope
+    WHERE ABS(slope) > max_slope
+    ORDER BY timestamp DESC
+
+

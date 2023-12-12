@@ -1,0 +1,38 @@
+TOKEN "timeout_endpoint_read_7964" READ
+
+NODE get_most_recent
+SQL >
+
+    %
+    WITH RankedData AS (
+        SELECT
+            site_name,
+            timestamp,
+            temp_f,
+            ROW_NUMBER() OVER (PARTITION BY site_name ORDER BY timestamp DESC) AS row_num
+        FROM
+            weather_data
+        WHERE timestamp > NOW() - interval {{Int16(time_window_minutes, 60, description="Results will be based on this number of seconds of data history. ")}} MINUTE
+      )
+    SELECT
+        site_name,
+        timestamp,
+        temp_f
+    FROM
+        RankedData
+    WHERE
+        row_num = 1
+
+
+
+NODE endpoint
+SQL >
+
+    %
+    SELECT * FROM get_most_recent
+    WHERE timestamp < NOW() - INTERVAL {{Int16(seconds,1800,description="If a sensor has not reported in the specified aboout of seconds, it is considered 'timedout'.")}} SECONDS
+    {% if defined(city) %}
+       AND lowerUTF8(site_name) LIKE lowerUTF8({{ String(city, description="Name of US City to get data for. Data is available for the 175 most populated cities in the US. Optional and defaults to all cities.") }})
+    {% end %}
+
+
