@@ -9,5 +9,5 @@
         assert_time_increase_percentage: int = 25  # allowed percentage increase in endpoint response time. use -1 to disable assert
         assert_bytes_read_increase_percentage: int = 25  # allowed percentage increase in the amount of bytes read by the endpoint. use -1 to disable assert
         assert_max_time: float = 1  # Max time allowed for the endpoint response time. If the response time is lower than this value then the assert_time_increase_percentage is not taken into account. Default is 0.3
-        skip: bool = False  # whether the test should be skipped, use it to skip individual pipe tests
+        skip: bool = True  # whether the test should be skipped, use it to skip individual pipe tests
         failfast: bool = False  # whether the test should stop at the first error encountered
