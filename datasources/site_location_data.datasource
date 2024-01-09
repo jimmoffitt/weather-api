@@ -1,0 +1,12 @@
+
+SCHEMA >
+    `site_name` String,
+    `state` String,
+    `state_code` String,
+    `country` String,
+    `lat` Float32,
+    `long` Float32,
+    `timezone` Int32
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "site_name, state_code, country, timezone"
